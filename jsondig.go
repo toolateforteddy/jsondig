@@ -11,7 +11,7 @@ import (
 
 func JsonDig(v interface{}, path ...string) (interface{}, error) {
 	if v == nil {
-		return nil, &DigError{
+		return nil, &digError{
 			path: path[0:0],
 		}
 	}
@@ -21,7 +21,7 @@ func JsonDig(v interface{}, path ...string) (interface{}, error) {
 	if msi, ok := v.(map[string]interface{}); ok {
 		val, err := JsonDig(msi[path[0]], path[1:]...)
 		if err != nil {
-			if e, ok := err.(*DigError); ok {
+			if e, ok := err.(*digError); ok {
 				if e.v == nil {
 					e.v = v
 				}
@@ -31,18 +31,18 @@ func JsonDig(v interface{}, path ...string) (interface{}, error) {
 		}
 		return val, nil
 	}
-	return nil, &DigError{
-		path: path[0:0],
+	return nil, &digError{
+		path: path[0:1],
 		v:    v,
 	}
 }
 
-type DigError struct {
+type digError struct {
 	path []string
 	v    interface{}
 }
 
-func (d *DigError) Error() string {
+func (d *digError) Error() string {
 	numPaths := len(d.path)
 	reverse := make([]string, numPaths)
 	for i, p := range d.path {
