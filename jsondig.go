@@ -10,38 +10,17 @@ import (
 	"strings"
 )
 
-func cleanArrayInd(ind string) (int, error) {
-	return strconv.Atoi(strings.Trim(ind, "[]"))
-}
-
 func JsonDig(v interface{}, path ...string) (interface{}, error) {
 	retVal := v
 	lastVal := v
 	pathInd := 0
 	for {
 		switch vv := retVal.(type) {
-		case string, bool, float64, nil:
-			retVal = vv
-			if len(path) == pathInd && retVal != nil {
-				return retVal, nil
-			}
-			return nil, &digError{
-				path: path[0:pathInd],
-				v:    lastVal,
-			}
 		case map[string]interface{}:
-			if len(path) == pathInd && retVal != nil {
-				return retVal, nil
-			}
-
 			lastVal = retVal
 			retVal = vv[path[pathInd]]
 			pathInd++
 		case []interface{}:
-			if len(path) == pathInd && retVal != nil {
-				return retVal, nil
-			}
-
 			index, err := cleanArrayInd(path[pathInd])
 			if err != nil {
 				return nil, err
@@ -61,13 +40,14 @@ func JsonDig(v interface{}, path ...string) (interface{}, error) {
 				v:    lastVal,
 			}
 		}
-		if len(path) < pathInd {
-			return nil, &digError{
-				path: path[0 : pathInd-1],
-				v:    lastVal,
-			}
+		if len(path) == pathInd && retVal != nil {
+			return retVal, nil
 		}
 	}
+}
+
+func cleanArrayInd(ind string) (int, error) {
+	return strconv.Atoi(strings.Trim(ind, "[]"))
 }
 
 type digError struct {
