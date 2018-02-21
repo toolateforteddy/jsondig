@@ -6,8 +6,13 @@ package jsondig
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
+
+func cleanArrayInd(ind string) (int, error) {
+	return strconv.Atoi(strings.Trim(ind, "[]"))
+}
 
 func JsonDig(v interface{}, path ...string) (interface{}, error) {
 	retVal := v
@@ -25,21 +30,40 @@ func JsonDig(v interface{}, path ...string) (interface{}, error) {
 				v:    lastVal,
 			}
 		case map[string]interface{}:
-			if len(path) <= pathInd {
-				return nil, &digError{
-					path: path[0:pathInd],
-					v:    lastVal,
-				}
+			if len(path) == pathInd && retVal != nil {
+				return retVal, nil
 			}
+
 			lastVal = retVal
 			retVal = vv[path[pathInd]]
 			pathInd++
 		case []interface{}:
-			// TODO:
-			return nil, nil
+			if len(path) == pathInd && retVal != nil {
+				return retVal, nil
+			}
+
+			index, err := cleanArrayInd(path[pathInd])
+			if err != nil {
+				return nil, err
+			}
+			if len(vv) <= index {
+				return nil, &digError{
+					path: path[0 : pathInd+1],
+					v:    vv,
+				}
+			}
+			lastVal = retVal
+			retVal = vv[index]
+			pathInd++
 		default:
 			return nil, &digError{
 				path: path[0:pathInd],
+				v:    lastVal,
+			}
+		}
+		if len(path) < pathInd {
+			return nil, &digError{
+				path: path[0 : pathInd-1],
 				v:    lastVal,
 			}
 		}
