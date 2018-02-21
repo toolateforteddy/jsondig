@@ -10,30 +10,39 @@ import (
 )
 
 func JsonDig(v interface{}, path ...string) (interface{}, error) {
-	if v == nil {
-		return nil, &digError{
-			path: path[0:0],
-		}
-	}
-	if len(path) == 0 {
-		return v, nil
-	}
-	if msi, ok := v.(map[string]interface{}); ok {
-		val, err := JsonDig(msi[path[0]], path[1:]...)
-		if err != nil {
-			if e, ok := err.(*digError); ok {
-				if e.v == nil {
-					e.v = v
-				}
-				e.path = append(e.path, path[0])
+	retVal := v
+	lastVal := v
+	pathInd := 0
+	for {
+		switch vv := retVal.(type) {
+		case string, bool, float64, nil:
+			retVal = vv
+			if len(path) == pathInd && retVal != nil {
+				return retVal, nil
 			}
-			return nil, err
+			return nil, &digError{
+				path: path[0:pathInd],
+				v:    lastVal,
+			}
+		case map[string]interface{}:
+			if len(path) <= pathInd {
+				return nil, &digError{
+					path: path[0:pathInd],
+					v:    lastVal,
+				}
+			}
+			lastVal = retVal
+			retVal = vv[path[pathInd]]
+			pathInd++
+		case []interface{}:
+			// TODO:
+			return nil, nil
+		default:
+			return nil, &digError{
+				path: path[0:pathInd],
+				v:    lastVal,
+			}
 		}
-		return val, nil
-	}
-	return nil, &digError{
-		path: path[0:1],
-		v:    v,
 	}
 }
 
@@ -43,13 +52,8 @@ type digError struct {
 }
 
 func (d *digError) Error() string {
-	numPaths := len(d.path)
-	reverse := make([]string, numPaths)
-	for i, p := range d.path {
-		reverse[numPaths-1-i] = p
-	}
-	pathStr := strings.Join(reverse, ".")
-	successFullPathStr := strings.Join(reverse[0:numPaths-1], ".")
+	pathStr := strings.Join(d.path, ".")
+	successFullPathStr := strings.Join(d.path[:len(d.path)-1], ".")
 
 	return fmt.Sprintf(
 		"Could not find object at %q.\nFound %#v at %q.",
